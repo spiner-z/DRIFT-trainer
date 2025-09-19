@@ -171,18 +171,34 @@ class K8sScheduleEnv(gym.Env):
         """
         # Normalize remaining by capacity (per-node) to [0,1]; padded nodes are zeros + inactive mask
         eps = 1e-8
+        # ratio has same shape as remaining_abs: (max_nodes, 3)
         ratio = np.zeros_like(self.remaining_abs, dtype=np.float32)
-        mask = self.active_nodes_mask[:, None]
-        ratio[mask] = np.clip(
-        self.remaining_abs[mask] / (self.capacity_pad[mask] + eps), 0.0, 1.0
-        )
-        # Normalize pod by global mean capacity to have a stable scale
-        cap_mean = self.capacity_pad[self.active_nodes_mask].mean(axis=0)
-        pod_norm = np.clip(self.curr_pods[self.pod_idx] / (cap_mean + eps), 0.0, 1.0).astype(
-        np.float32
-        )
+    
+        # Use 1-D boolean mask to select rows (correct way)
+        active = self.active_nodes_mask  # shape (max_nodes,)
+        if active.any():
+            ratio[active, :] = np.clip(
+                self.remaining_abs[active, :] / (self.capacity_pad[active, :] + eps),
+                0.0,
+                1.0,
+            )
+    
+        # compute cap_mean for normalization of pod; guard against no-active-nodes
+        if active.any():
+            cap_mean = self.capacity_pad[active].mean(axis=0)
+            cap_mean = np.where(cap_mean <= 0.0, eps, cap_mean)  # avoid /0
+        else:
+            cap_mean = np.ones(3, dtype=np.float32)
+    
+        # guard pod_idx out-of-range (episode might have ended)
+        if 0 <= self.pod_idx < len(self.curr_pods):
+            pod_req = self.curr_pods[self.pod_idx]
+            pod_norm = np.clip(pod_req / (cap_mean + eps), 0.0, 1.0).astype(np.float32)
+        else:
+            pod_norm = np.zeros(3, dtype=np.float32)
+    
         return {"nodes": ratio, "pod": pod_norm}
-
+    
     def _feasible_mask(self, pod_req_abs: np.ndarray) -> np.ndarray:
         mask = self.active_nodes_mask.copy()
         # feas：对每个节点检查三维资源是否都 ≥ Pod 需求。

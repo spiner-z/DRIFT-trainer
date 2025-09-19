@@ -1,0 +1,8 @@
+.venv/
+logs/
+nohup.out
+weights/
+.DS_Store/
+__pycache__/
+*.pyc
+venv/
