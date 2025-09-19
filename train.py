@@ -132,8 +132,10 @@ def build_env_from_args(args) -> K8sScheduleEnv:
     pod_list = None
     pod_prob = None
     if args.pods_csv and os.path.exists(args.pods_csv):
+        print("Using pods CSV for fixed pod sequence per episode.")
         pod_list = load_pods_csv(args.pods_csv)
     elif args.pod_dist_json and os.path.exists(args.pod_dist_json):
+        print("Using pod distribution JSON for random pod sampling per episode.")
         with open(args.pod_dist_json, "r") as f:
             data = json.load(f)
         # expect: [{"req": [cpu,mem,gpu], "prob": p}, ...]
@@ -150,6 +152,15 @@ def build_env_from_args(args) -> K8sScheduleEnv:
 
     # Let users swap in their own fragmentation function via a separate module path
     frag_fn = default_frag
+    print("=== Environment Configuration ===")
+    print(f"{len(node_cap)} nodes")
+    if pod_list is not None:
+        print(f"{len(pod_list)} pods (fixed sequence)")
+    elif pod_prob is not None:
+        print(f"{len(pod_prob)} pod types (random sampling)")
+    else:
+        print("Synthetic pods (random sampling)")
+
     return K8sScheduleEnv(node_cap, pod_list, pod_prob, cfg, frag_fn)
 
 
