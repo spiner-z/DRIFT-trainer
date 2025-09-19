@@ -236,8 +236,8 @@ def main():
         print(f"Baseline eval skipped due to error: {e}")
 
     returns, losses = train(env, episodes=args.episodes, agent=agent, buffer=buffer, outdir=args.outdir)
-    print(f"Training returns: {returns}")
-    print(f"Training losses: {losses}")
+    # print(f"Training returns: {returns}")
+    # print(f"Training losses: {losses}")
     print("Training done.")
 
 
